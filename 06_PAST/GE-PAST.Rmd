@@ -1,0 +1,160 @@
+---
+title: "GE-PAST"
+author: "Sarah Lipps"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+I am running the PAST tool Thrash et al. 2020.
+I have a lot of phenotypes, so I would rather run this on my desktop instead of using the RShiny App part of MaizeGDB
+More on PAST for R: https://github.com/IGBB/PAST/tree/R
+```{r}
+library(tidyverse)
+BiocManager::install("PAST") #Install PAST
+library(PAST)
+```
+
+Function to run all the PAST steps and export the outputs
+```{r}
+PastLife <- function(AssFilePath, EffFilePath, myLD, GFFpath, FilterType, PathwaysPath, OutPath, OutName) {
+  #Load GWAS Data
+  myGWAS <- load_GWAS_data(association_file = AssFilePath, effects_file = EffFilePath,
+                         association_columns = c("Trait", "Marker", "Chr", "Pos", "p", "MarkerR2"),
+                         effects_columns = c(c("Trait", "Marker", "Locus", "Site", "Effect")))
+  #Assign SNPS to Gens
+  myGENES <- assign_SNPs_to_genes(gwas_data = myGWAS,
+                         LD = myLD,
+                         gff_file = GFFpath,
+                         filter_type = FilterType,
+                         window = 1000,
+                         r_squared_cutoff = 0.8,
+                         num_cores = 4)
+  #Find Significant Pathways - Increasing
+  rugp.inc <- find_pathway_significance(genes = myGENES,
+                                        pathways_file = PathwaysPath,
+                                        gene_number_cutoff = 5,
+                                        mode = "increasing",
+                                        sample_size = 1000,
+                                        num_cores = 4)
+  rugp.inc$mode = "Increasing"
+  #Find Significant Pathways - Decreasing
+  rugp.dec <- find_pathway_significance(genes = myGENES,
+                                        pathways_file = PathwaysPath,
+                                        gene_number_cutoff = 5,
+                                        mode = "decreasing",
+                                        sample_size = 1000,
+                                        num_cores = 4)
+  rugp.dec$mode = "Decreasing"
+  #Combine the two types of significant pathways, filter for alpha = 0.05
+  rugp <- rbind(rugp.inc, rugp.dec)
+  rugp %>% filter(pvalue <= 0.05) -> rugp.filt
+  
+  #write final file
+  write.csv(rugp.filt, file = paste(OutPath,OutName,".csv", sep = ""), row.names = F)
+}
+```
+
+Load LD data - universal for all phenos
+```{r}
+tassel.ld <- load_LD("./LD/GE_ames_LD_20221202_.txt")
+```
+
+Run my function that runs PAST and formats the outputs nicely.
+```{r}
+#pressing start 20241202 @ 1:30 PM
+PastLife("./../Data/ASH_MLM-GE_AssocFile.txt", "./../Data/ASH_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_ASH_20241202")
+
+PastLife("./../Data/DON_MLM-GE_AssocFile.txt", "./../Data/DON_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_DON_20241202")
+
+PastLife("./../Data/DTA_MLM-GE_AssocFile.txt", "./../Data/DTA_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_DTA_20241202")
+
+PastLife("./../Data/DTS_MLM-GE_AssocFile.txt", "./../Data/DTS_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_DTS_20241202")
+#stopping here 20241203 @ 10:00 AM
+
+#restarting 20241203 @ 10:AM
+#changed num cores to 4
+PastLife("./../Data/FerAinoc_MLM-GE_AssocFile.txt", "./../Data/FerAinoc_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_FerAinoc_20241202")
+
+PastLife("./../Data/FerAUN_MLM-GE_AssocFile.txt", "./../Data/FerAUN_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_FerAUN_20241202")
+
+PastLife("./../Data/FIBER_MLM-GE_AssocFile.txt", "./../Data/FIBER_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_FIBER_20241202")
+#stopping here 20241203 @ 11:52 AM
+#restarting here 20241203 @ 12:00 PM
+PastLife("./../Data/OIL_MLM-GE_AssocFile.txt", "./../Data/OIL_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_OIL_20241202")
+
+PastLife("./../Data/PCoAinoc_MLM-GE_AssocFile.txt", "./../Data/PCoAinoc_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_PCoAinoc_20241202")
+
+PastLife("./../Data/PCoAUN_MLM-GE_AssocFile.txt", "./../Data/PCoAUN_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_PCoAUN_20241202")
+#stopping here 20241203 @ 1:58
+#restarting here 20241203 @ 2:45
+PastLife("./../Data/PCpct_MLM-GE_AssocFile.txt", "./../Data/PCpct_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_PCpct_20241202")
+
+PastLife("./../Data/PROTEIN_MLM-GE_AssocFile.txt", "./../Data/PROTEIN_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_PROTEIN_20241202")
+
+PastLife("./../Data/SEV_MLM-GE_AssocFile.txt", "./../Data/SEV_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_SEV_20241202")
+#Stopping here 20241203 @ 4:45 PM
+#Restarting here 20241203 @4:45PM
+PastLife("./../Data/STARCH_MLM-GE_AssocFile.txt", "./../Data/STARCH_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_STARCH_20241202")
+
+PastLife("./../Data/ZEA_MLM-GE_AssocFile.txt", "./../Data/ZEA_MLM-GE_EffectFile.txt", tassel.ld, "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+         "gene", "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt", "./PASTOutputs/", "PAST_ZEA_20241202")
+#Finished 20241203 @6:07 PM
+```
+
+
+
+#Old Test Code#
+Load GWAS data (assoc and effects files) for all phenos
+```{r}
+ash.gwas <- load_GWAS_data(association_file = "./ASH_MLM-GE_AssocFile.txt", effects_file = "./ASH_MLM-GE_EffectFile.txt",
+                           association_columns = c("Trait", "Marker", "Chr", "Pos", "p", "MarkerR2"),
+                           effects_columns = c("Trait", "Marker", "Locus", "Site", "Effect"))
+```
+
+Assign SNPs to genes
+```{r}
+filter_type=c("gene")
+ash.genes <- assign_SNPs_to_genes(gwas_data =ash.gwas,
+                                  LD = LD,
+                                  gff_file = "./RefGenFiles/MaizeRefgen_v4_gene_models_20240708.gff",
+                                  filter_type = filter_type,
+                                  window = 1000,
+                                  r_squared_cutoff = 0.8,
+                                  num_cores = 2)
+```
+
+Finding Significant Pathways
+```{r}
+ash.rugplots.inc <- find_pathway_significance(genes = ash.genes,
+                                                   pathways_file = "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt",
+                                                   gene_number_cutoff = 5,
+                                                   mode = "increasing",
+                                                   sample_size = 1000,
+                                                   num_cores = 2)
+
+ash.rugplots.inc$mode = "Increasing"
+
+ash.rugplots.dec <- find_pathway_significance(genes = ash.genes,
+                                                   pathways_file = "./RefGenFiles/MaizeRefgen_v4_pathways_20240708.txt",
+                                                   gene_number_cutoff = 5,
+                                                   mode = "decreasing",
+                                                   sample_size = 1000,
+                                                   num_cores = 2)
+ash.rugplots.dec$mode = "Decreasing"
+test <- rbind(ash.rugplots.dec, ash.rugplots.inc)
+test %>% filter(pvalue <= 0.05)
+```
