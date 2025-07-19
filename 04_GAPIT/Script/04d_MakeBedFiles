@@ -1,0 +1,88 @@
+# A VERY NOT ELEGANT WAY OF MAKING A BEDFILE FROM GAPIT OUTPUT
+
+# PACKAGES 
+library(tidyverse)
+
+#disease
+read.csv("./../Output/FarmCPU-Disease_20241122/GAPIT.Association.GWAS_Results.FarmCPU.SEV.csv", header = T) %>% 
+  filter(H.B.P.Value <= 0.1) -> sev.snps
+sev.snps$trait = "SEV"
+
+read.csv("./../Output/FarmCPU-Disease_20241122/GAPIT.Association.GWAS_Results.FarmCPU.DON.csv") %>%
+  filter(H.B.P.Value <= 0.1) -> don.snps
+
+read.csv("./../Output/FarmCPU-Disease_20241122/GAPIT.Association.GWAS_Results.FarmCPU.ZEA.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> zea.snps
+zea.snps$trait = "ZEA"
+
+#hcas
+read.csv("./../Output/FarmCPU-HCA-Flower_20241122/GAPIT.Association.GWAS_Results.FarmCPU.DTA.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> dta.snps
+dta.snps$trait = "DTA"
+
+read.csv("./../Output/FarmCPU-HCA-Flower_20241122/GAPIT.Association.GWAS_Results.FarmCPU.DTS.csv", header = T) %>% 
+  filter(H.B.P.Value <= 0.1) -> dts.snps
+dts.snps$trait = "DTS"
+
+read.csv("./../Output/FarmCPU-HCA-Flower_20241122/GAPIT.Association.GWAS_Results.FarmCPU.FerAinoc.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> ferainoc.snps
+ferainoc.snps$trait = "FerAinoc"
+
+read.csv("./../Output/FarmCPU-HCA-Flower_20241122/GAPIT.Association.GWAS_Results.FarmCPU.FerAUN.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> feraun.snps
+feraun.snps$trait = "FerAUN"
+
+read.csv("./../Output/FarmCPU-HCA-Flower_20241122/GAPIT.Association.GWAS_Results.FarmCPU.PCoAinoc.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> pcoainoc.snps
+pcoainoc.snps$trait = "PCoAinoc"
+
+read.csv("./../Output/FarmCPU-HCA-Flower_20241122/GAPIT.Association.GWAS_Results.FarmCPU.PCoAUN.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> pcoaun.snps
+pcoaun.snps$trait = "PCoAUN"
+
+#kernel quality
+read.csv("./../Output/FarmCPU-KQual_20241122/GAPIT.Association.GWAS_Results.FarmCPU.ASH.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> ash.snps
+ash.snps$trait = "ASH"
+
+read.csv("./../Output/FarmCPU-KQual_20241122/GAPIT.Association.GWAS_Results.FarmCPU.FIBER.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> fiber.snps
+fiber.snps$trait = "FIBER"
+
+read.csv("./../Output/FarmCPU-KQual_20241122/GAPIT.Association.GWAS_Results.FarmCPU.OIL.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> oil.snps
+oil.snps$trait = "OIL"
+
+read.csv("./../Output/FarmCPU-KQual_20241122/GAPIT.Association.GWAS_Results.FarmCPU.PCpct.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> pcpct.snps
+pcpct.snps$trait = "PCpct"
+
+read.csv("./../Output/FarmCPU-KQual_20241122/GAPIT.Association.GWAS_Results.FarmCPU.PROTEIN.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> protein.snps
+protein.snps$trait = "PROTEIN"
+
+read.csv("./../Output/FarmCPU-KQual_20241122/GAPIT.Association.GWAS_Results.FarmCPU.STARCH.csv", header = T) %>%
+  filter(H.B.P.Value <= 0.1) -> starch.snps
+starch.snps$trait = "STARCH"
+
+# COMBINE THEM ALL
+all.snps <- do.call(rbind, list(sev.snps, don.snps, zea.snps, ash.snps, dta.snps, dts.snps, oil.snps,
+                    fiber.snps, pcpct.snps, feraun.snps, pcoaun.snps, starch.snps, protein.snps,
+                    pcoainoc.snps, ferainoc.snps))
+write.csv(all.snps, "./../Output/FARMCPU_sigSNPS-ALLPHENOS_20241203.csv", row.names = T)
+
+# THE NON ELEGAANT FORMATTING
+# IT GETS THE JOB DONE
+all.snps$name = str_c(all.snps$SNP, all.snps$trait, sep = ":")
+all.snps$Start_Pos = all.snps$Pos
+all.snps$End_Pos = all.snps$Pos
+
+all.snps$Pref = "Chr"
+all.snps$Chromosome = str_c(all.snps$Pref, all.snps$Chr, sep = "")
+
+all.snps %>% select(c(Chromosome, Start_Pos, End_Pos, name)) -> snps.bed
+snps.bed.sort <- snps.bed[order(snps.bed$Chr, snps.bed$Start_Pos),]
+
+#save it
+write.table(snps.bed.sort, "./../Output/FarmCPU_SigSNP_sorted.bed", sep = "\t", col.names = F, row.names = F, quote = F)
+write.table(snps.bed.sort, "./../Output/FarmCPU_SigSNP_sorted.txt", sep = "\t", col.names = F, row.names = F, quote = F)

@@ -1,0 +1,13 @@
+# DO BARCODES MATCH BETWEEN FILE
+
+pheno <- read.csv("./../Data/LSMeans_AllPhenos_BarcodesAdded_20241119.csv", header = T)
+colnames(pheno)
+myY <- pheno[,c(20,2:16)]
+colnames(myY)[1] <- "Taxa"
+str(myY)
+#genotypic file
+myG <- read.table("./../Data/ames_filt-Taxa-Markers-MAF1_NoHeader.hmp.txt", sep = "\t", header = T)
+
+phenobarcodes <- myY$Taxa
+gbsbarcodes <- colnames(myG)[12:ncol(myG)]
+phenobarcodes == gbsbarcodes # SUCCESS
