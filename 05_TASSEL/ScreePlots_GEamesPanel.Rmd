@@ -1,0 +1,40 @@
+---
+title: "PC-ScreePlots_GEamesPanel"
+author: "Sarah Lipps"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+I did PC analysis using the filtered markers dataset that I use for mapping. 
+I am examining all the PCs to evaluate how many i need to include
+#1 Load data
+```{r}
+pcs <- read.table("./PCA_ames_filt-Taxa-Markers-MAF1_20241121.txt", skip = 2, header = T, sep =  "\t")
+head(pcs)
+
+eigens <- read.table("./Eigenvalues_ames_filt-Taxa-Markers-MAF1_20241121.txt", header = T, sep = "\t")
+head(eigens)
+```
+
+#2 Scree Plot
+```{r}
+eigens %>% filter(cumulative.proportion <= 0.9)
+
+eigens %>% filter(PC <= 25) %>%
+  ggplot(., aes(x = PC, y = proportion.of.total)) +
+  geom_point() +
+  geom_line()
+```
+
+
+
+
+```{r}
+ggplot(pcs, aes(x = PC1, y = PC2)) +
+  geom_point()
+```
+
