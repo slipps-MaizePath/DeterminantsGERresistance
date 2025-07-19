@@ -1,0 +1,123 @@
+# DOES REDUCING LIGNING INCREASE SUSCEPTIBILITY
+
+# PACKAGES
+library(tidyverse)
+library(Hmisc)
+library(MASS) #boxcox, outlier analysis
+library(DescTools) #DunnettTestt
+library(ggpubr) #plot bracket
+#outlier analysis
+library(smatr) #test of slope
+library(car)
+library(VGAM) #leverage plots
+
+# LOAD AND FORMAT DATASET
+gb <- read.csv("./../Data/GB_CompleteData_Wide_2023-12-08.csv")
+str(gb)
+for (i in c(1:5, 18)) {
+  gb[,i] <- as.factor(gb[,i])
+}
+
+for (i in c(6:17)) {
+  gb[,i] <- as.numeric(gb[,i])
+}
+
+# VISUALIZE
+ggplot(gb, aes(x = ger.avg)) +
+  geom_histogram(binwidth = 7, fill = "lightblue", color = "black") +
+  facet_wrap(~year) +
+  theme_classic()
+
+# LINEAR MODEL
+gb.lm <- lm((ger.avg + 1) ~ plot + plot*year, weights = counts, data = gb)
+anova(gb.lm)
+
+shapiro.test(gb.lm$residuals)
+hist(gb.lm$residuals)
+plot(gb.lm)
+
+# OUTLIER ANALYSIS
+#bonferroni outliers
+outlierTest(gb.lm)
+#partial least squares plot
+#leveragePlots(gb.lm, pch = 16)
+#studentized residuals
+stresid = studres(gb.lm)
+plot(stresid ~ gb.lm$fitted.values, pch = 16, xlab = "Predicted Values", ylab = "Studentized Residuals")
+abline(h = 2, col = "red")
+abline(h = -2, col = "red")
+#do the residuals look normal
+hist(stresid, freq = FALSE,
+     main = "Dist. of Student Resid")
+xfit = seq(min(stresid), max(stresid), length = 40)
+yfit = dnorm(xfit)
+lines(xfit, yfit)
+
+#Cooke's distance
+cutoff = 4/((nrow(gb) - length(gb.lm$coefficients) - 2))
+plot(gb.lm, which = 4, cook.levels = cutoff)
+abline(h = cutoff, col = "red")
+Points 40, 3, and 34 are repeat offenders. I dont want to delete everything. I will start with 40 and go from there.
+gb.filt <- gb[-40, ]
+
+gb.lm2 <- lm((ger.avg + 1) ~ plot + plot*year, weights = counts, data = gb.filt)
+anova(gb.lm2)
+plot(gb.lm2)
+hist(gb.lm2$residuals)
+
+gb.filt2 <- gb.filt[-3, ]
+gb.lm3 <- lm((ger.avg + 1) ~ plot + plot*year, weights = counts, data = gb.filt2)
+anova(gb.lm3)
+plot(gb.lm3)
+hist(gb.lm3$residuals)
+
+# BOXCOX
+box <- boxcox(gb.lm2)
+  lambda <- box$x[which(box$y==max(box$y))]
+  lambda
+  
+  gb.box2 <- lm((ger.avg + 1)^0.71 ~ plot + plot*year, data = gb.filt)
+  anova(gb.box2)
+  shapiro.test(gb.box2$residuals)
+  plot(gb.box2)
+  
+  box <- boxcox(gb.lm3)
+  lambda <- box$x[which(box$y==max(box$y))]
+  lambda
+  
+  gb.box3 <- lm((ger.avg + 1)^0.63 ~ plot + plot*year, data = gb.filt2)
+  anova(gb.box3)
+  shapiro.test(gb.box3$residuals)
+  plot(gb.box3)
+
+# DUNNETT'S TESTT
+DunnettTest((ger.avg + 1)^0.63 ~ plot, data = gb.filt2, control = "A619", conf.level = 0.95, na.action = "na.omit") -> my.results
+my.results <- as.data.frame(my.results$A619)
+
+write.csv(my.results, "./../Output/GB_OutlierRemoval_DunnettsTest_20240205.csv")
+
+# FIGURE
+gb.filt2$plot.short <- str_replace(gb.filt2$plot, "A619-", "")
+
+ggplot(gb.filt2, aes(x = plot.short, y = ger.avg)) +
+  geom_boxplot(color  = "black", fill = "lightgrey", lwd = 1.01) +
+  expand_limits(y = 95) +
+  labs(y = "Mean Severity \n (0-100%)", x = "Genotype") +
+  geom_bracket(xmin = "A619", xmax = "bm4", y.position = 85, label = "p=0.07", size = 1.01, label.size = 6, vjust = -0.5) +
+  geom_bracket(xmin = "A619", xmax = "bm1bm2", y.position = 70, label = "p=0.10", size = 1.01, label.size = 6, vjust = -0.5) +
+  scale_x_discrete(labels = c("A619", bquote(~italic("bm1")), bquote(~italic("bm1bm2")), 
+                              bquote(~italic("bm2")), bquote(~italic("bm3bm4")), bquote(~italic("bm4")))) +
+ theme_classic(base_size = 12, base_family = "sans", base_line_size = 12/22) +
+  theme(axis.text.x = element_text(size = 20, face = "bold"),
+        axis.text.y = element_text(size = 20, face = "bold"),
+        axis.title.x = element_text(size = 24, face = "bold"),
+        axis.title.y = element_text(size = 24, face = "bold"),
+        axis.line = element_line(size = 1.01),
+        axis.ticks = element_blank(),
+        plot.title = element_text(element_blank())) -> gb.dun.fig
+
+gb.dun.fig
+
+tiff("./../Output/Figure4_BMR_DunnettTest_200x100mm_20250205.tiff", width = 200, height = 125, units = "mm", res = 350, bg = "white")
+gb.dun.fig
+dev.off()
