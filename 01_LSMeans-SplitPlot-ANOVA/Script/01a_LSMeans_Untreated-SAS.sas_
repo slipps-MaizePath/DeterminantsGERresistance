@@ -1,0 +1,234 @@
+/* Filter data for only untreated dataset */
+
+data meta_un;
+	set work.meta;
+	if Treatment = "UN";
+run;
+
+
+/* Build the model for each different kernel quality trait */
+
+data work.meta_un;
+	set work.meta_un;
+	Ash_trans= Ash**2;
+run;
+
+ods output lsmeans=bluesASH;
+proc mixed data=work.meta_un method=type3 covtest;
+	class Field BlockContiguous plot;
+	model Ash_trans = plot / outpred=resids;
+	random Field;
+	lsmeans plot;
+run;
+ods output close;
+
+/* Residuals */
+proc univariate data=resids normal plot;
+var resid;
+run;
+
+/* Export it to SAS On Demand */
+proc export data=work.bluesASH
+	outfile="/home/u63868756/sasuser.v94/Output/lsmeans_ASH.csv"
+	dbms=csv
+	replace;
+run;
+
+
+/* Fiber */
+data work.meta_un;
+	set work.meta_un;
+	FIB_trans= Fiber**1.5;
+run;
+
+ods output lsmeans=bluesFIBER;
+proc mixed data=work.meta_un method=type3 covtest;
+	class Field BlockContiguous plot;
+	model FIB_trans = plot / outpred=resids;
+	random Field;
+	lsmeans plot;
+run;
+ods output close;
+
+proc univariate data=resids normal plot;
+var resid;
+run;
+
+proc export data=work.bluesFIBER
+	outfile="/home/u63868756/sasuser.v94/Output/lsmeans_FIBER.csv"
+	dbms=csv
+	replace;
+run;
+
+
+/* Protein */
+ods output lsmeans=bluesPROTEIN;
+proc mixed data=work.meta_un method=type3 covtest;
+	class Field BlockContiguous plot;
+	model Protein = plot / outpred=resids;
+	random Field ;
+	lsmeans plot;
+run;
+ods output close;
+
+proc univariate data=resids normal plot;
+var resid;
+run;
+
+proc export data=work.bluesPROTEIN
+	outfile="/home/u63868756/sasuser.v94/Output/lsmeans_PROTEIN.csv"
+	dbms=csv
+	replace;
+run;
+
+
+/* Starch */
+ods output lsmeans=bluesSTARCH;
+proc mixed data=work.meta_un method=type3 covtest;
+	class Field BlockContiguous plot;
+	model Starch = plot / outpred=resids;
+	random Field;
+	lsmeans plot;
+run;
+ods output close;
+
+proc univariate data=resids normal plot;
+var resid;
+run;
+
+proc export data=work.bluesSTARCH
+	outfile="/home/u63868756/sasuser.v94/Output/lsmeans_STARCH.csv"
+	dbms=csv
+	replace;
+run;
+
+/* Oil */
+data work.meta_un;
+	set work.meta_un;
+	Oil_trans= Oil**0.8;
+run;
+
+ods output lsmeans=bluesOIL;
+proc mixed data=work.meta_un method=type3 covtest;
+	class Field BlockContiguous plot;
+	model Oil_trans = plot / outpred=resids;
+	random Field;
+	lsmeans plot;
+run;
+ods output close;
+
+proc univariate data=resids normal plot;
+var resid;
+run;
+
+proc export data=work.bluesOIL
+	outfile="/home/u63868756/sasuser.v94/Output/lsmeans_OIL.csv"
+	dbms=csv
+	replace;
+run;
+
+/* Building models for untreated HCAs */
+
+/*Make FER numeric */
+data work.meta_un;
+	set work.meta_un;
+	FER_num = input(FER, best12.);
+run;
+
+ods output lsmeans=bluesFERun;
+proc mixed data=work.meta_un method=type3 covtest;
+	class Field plot;
+	model FER_num = plot / outpred=resids;
+	random Field;
+	lsmeans plot;
+run;
+ods output close;
+
+proc univariate data=resids normal plot;
+var resid;
+run;
+
+/* Export it to SAS On Demand */
+proc export data=work.bluesFERun
+	outfile="/home/u63868756/lsmeans_FERun.csv"
+	dbms=csv
+	replace;
+run;
+
+/* Maker PCO numeric */
+data work.meta_un;
+	set work.meta_un;
+	PCO_num = input(PCO, best12.);
+run;
+
+ods output lsmeans=bluesPCOun;
+proc mixed data=work.meta_un method=type3 covtest;
+	class Field plot;
+	model PCO_num = plot / outpred=resids;
+	random Field;
+	lsmeans plot;
+run;
+ods output close;
+
+proc univariate data=resids normal plot;
+var resid;
+run;
+
+/* Export it to SAS On Demand */
+proc export data=work.bluesPCOun
+	outfile="/home/u63868756/lsmeans_PCOun.csv"
+	dbms=csv
+	replace;
+run;
+
+
+/* Model for DTA and DTS */
+ods output lsmeans=bluesDTA;
+proc mixed data=work.meta method=type3 covtest;
+	/*class Year Field BlockContiguous plot;*/
+	class Year Field plot;
+	model DTA = plot / outpred=resids;
+	/*random Year Field(Year) BlockContiguous(Field*Year) Year*plot;*/
+	random Field;
+	lsmeans plot;
+run;
+ods output close;
+
+proc univariate data=resids normal plot;
+var resid;
+run;
+
+/* Export it to SAS On Demand */
+proc export data=work.bluesDTA
+	outfile="/home/u63868756/sasuser.v94/Output/lsmeans_DTA_SimpleModel.csv"
+	dbms=csv
+	replace;
+run;
+
+ods output lsmeans=bluesDTS;
+proc mixed data=work.meta method=type3 covtest;
+	/*class Year Field BlockContiguous plot;*/
+	class Year Field plot;
+	model DTS = plot / outpred=resids;
+	/*random Year Field(Year) BlockContiguous(Field*Year) Year*plot;*/
+	random Field;
+	lsmeans plot;
+run;
+ods output close;
+
+proc univariate data=resids normal plot;
+var resid;
+run;
+
+/* Export it to SAS On Demand */
+proc export data=work.bluesDTS
+	outfile="/home/u63868756/sasuser.v94/Output/lsmeans_DTS_SimpleModel.csv"
+	dbms=csv
+	replace;
+run;
+
+
+
+
+
+
