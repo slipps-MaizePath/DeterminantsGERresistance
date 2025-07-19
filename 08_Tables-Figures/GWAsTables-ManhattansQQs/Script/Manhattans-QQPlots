@@ -1,0 +1,147 @@
+# MANHATTAN AND QQ PLOTS
+
+# PACKAGES
+library(tidyverse)
+library(ggpubr)
+
+# FUNCTION FOR MANHATTANS
+MANhattans <- function(GWAS, color1, color2, logylimit, sigthresh, CUSTOM.TITLE, XTEXT, XTITLE, TITLETEXT) {
+
+  ###Part 1 - Get cumulative position of each SNP
+  myGWAS <- GWAS %>%
+    #Compute chromosome size
+    group_by(Chr) %>% summarise(chr_len=max(Pos)) %>%
+    #Calculate cumulative position of each chromosome
+    mutate(tot=cumsum(chr_len)-chr_len) %>% dplyr::select(-chr_len) %>%
+    #Add this info to the initial dataset
+    left_join(GWAS, ., by=c("Chr"="Chr")) %>%
+    #Add a cumulative position of each SNP
+    arrange(Chr, Pos) %>% mutate(BPcum=Pos+tot)
+  
+  ###Part 2 - Prep the x-axis
+  myGWAS$BPcum <- as.numeric(myGWAS$BPcum)
+  axisdf = myGWAS %>% group_by(Chr) %>% dplyr::summarize(center =( max(BPcum) + min(BPcum) ) / 2 )
+  
+  ###Part 3 - Make the manhattan plot
+  manhattan <- ggplot(myGWAS, aes(x=BPcum, y=-log10(P.value))) +
+    #show all points
+    #geom_point(aes(color = as.factor(Chr)), alpha = 1, size = 2) +
+    geom_point(aes(color = as.factor(Chr)), alpha = 1, size = 6) +
+    scale_color_manual(values = rep(c(color1, color2), 22 )) +
+    #custom axes:
+    scale_x_continuous( label = axisdf$Chr, breaks = axisdf$center ) +
+    #remove space between plot area and x axis
+    scale_y_continuous(expand = c(0, 0.1), limits = c(NA, logylimit), breaks = seq(0, logylimit, 2) ) +
+    geom_hline(yintercept = -log10(sigthresh), size = 1.01, color = "black") +
+    
+    # Customize the theme
+    #labs(title = CUSTOM.TITLE, y = "-log(p)", x = "FILL") +
+    labs(title = CUSTOM.TITLE, y = expression(-log[10](p)), x = "FILL") +
+    theme_classic() +
+    theme(
+      legend.position = "none",
+      panel.border = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      axis.text.x = element_text(size = XTEXT, face = "bold"),
+      axis.text.y = element_text(size = XTEXT, face = "bold"),
+      axis.title.y = element_text(size = XTITLE, face = "bold"),
+      axis.line = element_line(linewidth = 1.02),
+      axis.ticks.x = element_blank(),
+      axis.ticks.y = element_blank(),
+      plot.title = element_text(size = TITLETEXT, face = "bold", hjust = 0.5),
+      axis.title.x = element_text(size =XTITLE, face = "bold", color = "white")
+    )
+#save to object  
+return(manhattan)  
+}
+
+# FUNCTION FOR QQ PLOTS
+qqsRfun <- function(GWAS, LOGYLIMIT, XTEXT, XTITLE, TITLETEXT){
+  GWAS %>% arrange(P.value) %>% mutate(quant = c(1:length(P.value)) / (length(P.value) + 1)) %>%
+    #plott observed (y) vs expected (x)
+    ggplot(., aes(x = -log10(quant), y = -log10(P.value))) +
+    geom_abline(slope = 1, intercept = 0, color = "red", lwd = 1.01) +
+    geom_point(shape = 1, color = "black", size = 3, stroke = 1.5) +
+    #axis scales
+    scale_x_continuous(breaks = seq(0, 5, 1)) +
+    scale_y_continuous(breaks = seq(0, LOGYLIMIT, 2)) +
+    #customize theme
+    #labs(x = "Expected -log10(p)", y = "Observed -log10(p)", title = "FILL") +
+    labs(x = expression(Expected -log["10"](p)), y = expression(Observed -log["10"](p), title = "FILL")) +
+    theme_classic() +
+    theme(
+      legend.position = "none",
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+      axis.text.x = element_text(size = XTEXT, face = "bold"),
+      axis.text.y = element_text(size = XTEXT, face = "bold"),
+      axis.title.x = element_text(size = XTITLE, face = "bold"),
+      axis.title.y = element_text(size = XTITLE, face = "bold"),
+      axis.line = element_line(linewidth = 1.02),
+      plot.title = element_text(size = TITLETEXT, color = "white"),
+      axis.ticks.x = element_blank(),
+      axis.ticks.y = element_blank()
+    ) -> myqq
+  #save to object
+  return(myqq)
+}
+
+# RUN IT FOR EACH TRAIT
+sev <- read.csv("./../Data/GWAS-outputs/GAPIT.Association.GWAS_Results.FarmCPU.SEV.csv", header = T)
+sev.man <- MANhattans(sev, "#252525", "#636363", 12, 0.000010, "Severity", 18, 21, 24)
+sev.qq <- qqsRfun(sev, 12, 18, 21, 24)
+
+zea <- read.csv("./../Data/GWAS-outputs/GAPIT.Association.GWAS_Results.FarmCPU.ZEA.csv", header = T)
+zea.man <- MANhattans(zea, "#252525", "#636363", 8, 0.000002, "Zearalenone", 18, 21, 24)
+zea.qq <- qqsRfun(zea, 8, 18, 21, 24)
+
+rm(sev, zea)
+
+#Pericarp FerA
+pc <- read.csv("./../Data/GWAS-outputs/GAPIT.Association.GWAS_Results.FarmCPU.PCpct.csv", header = T)
+pc.man <- MANhattans(pc, "#bdbdbd", "#636363", 10, 0.000005, "Pericarp Percent", 18, 21, 24)
+pc.qq <- qqsRfun(pc, 10, 18, 21, 24)
+
+ferainoc <- read.csv("./../Data/GWAS-outputs/GAPIT.Association.GWAS_Results.FarmCPU.FerAinoc.csv", header = T)
+ferainoc.man <- MANhattans(ferainoc, "#252525", "#636363", 9, 0.000004, "Ferulic Acid - Inoculated", 18, 21, 24)
+ferainoc.qq <- qqsRfun(ferainoc, 8, 18, 21, 24)
+
+rm(pc, ferainoc)
+
+#FerA, PCoA
+feraun <- read.csv("./../Data/GWAS-outputs/GAPIT.Association.GWAS_Results.FarmCPU.FerAUN.csv", header = T)
+feraun.man <- MANhattans(feraun, "#bdbdbd", "#636363", 10, 0.0000009, "Ferulic Acid - Untreated", 18, 21, 24)
+feraun.qq <- qqsRfun(feraun, 10, 18, 21, 24)
+
+pcoinoc <- read.csv("./../Data/GWAS-outputs/GAPIT.Association.GWAS_Results.FarmCPU.PCoAinoc.csv", header = T)
+pcoinoc.man <- MANhattans(pcoinoc, "#252525", "#636363", 10, 0.000009, "p-Coumaric Acid - Inoculated", 18, 21, 24)
+pcoinoc.qq <- qqsRfun(pcoinoc, 10, 18, 21, 24)
+
+rm(feraun, pcoinoc)
+
+#PCoA
+pcoun <- read.csv("./../Data/GWAS-outputs/GAPIT.Association.GWAS_Results.FarmCPU.PCoAUN.csv", header = T)
+pcoun.man <- MANhattans(pcoun, "#bdbdbd", "#636363", 14, 0.00006, "p-Coumaric Acid - Untreated", 18, 21, 24)
+pcoun.qq <- qqsRfun(pcoun, 12, 18, 21, 24)
+
+rm(pcoun)
+
+# EXPORT THE FIGURE
+## DISEASES
+tiff("./../Output/Figure_SEV-ZEA_Manhattans_20241213.tiff", width = 400, height = 200, units = "mm", res = 350, bg = "white")
+ggarrange(sev.man, sev.qq, zea.man, zea.qq,
+          labels = c("A", "B", "C", "D"),
+          font.label = list(size = 30, color = "black"),
+          hjust = 0.0, vjust = 1.0, align = "v",
+          ncol = 2, nrow = 2)
+dev.off()
+
+## OTHER
+tiff("./../Output/SupplementaryFigure_AllPhenos_Manhattans_20250121.tiff", width = 400, height = 600, units = "mm", res = 350, bg = "white")
+ggarrange(ferainoc.man, ferainoc.qq, pcoinoc.man, pcoinoc.qq, feraun.man, feraun.qq, pcoun.man, pcoun.qq, pc.man, pc.qq,
+          labels = c("A", "B", "C", "D", "E", "F", "G", "H", "I", "J"),
+          font.label = list(size = 30, color = "black"),
+          hjust = 0.0, vjust = 1.0, align = "v",
+          ncol = 2, nrow = 5)
+dev.off()

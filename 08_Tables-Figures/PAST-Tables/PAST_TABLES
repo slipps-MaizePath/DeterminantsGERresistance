@@ -1,0 +1,50 @@
+#  GENERATING TABLES FROM PAST ANALYSIS
+
+library(tidyverse)
+#load the tables
+sev <- read.csv("./Data/PAST_SEV_20241202.csv", header = T)
+sev$Pheno <- "SEV"
+don <- read.csv("./Data/PAST_DON_20241202.csv", header = T)
+don$Pheno <- "DON"
+zea <- read.csv("./Data/PAST_ZEA_20241202.csv", header = T)
+zea$Pheno <- "ZEA"
+pcoinoc <- read.csv("./Data/PAST_PCoAinoc_20241202.csv", header = T)
+pcoinoc$Pheno <- "PCoAinoc"
+pcoun <- read.csv("./Data/PAST_PCoAUN_20241202.csv", header = T)
+pcoun$Pheno <- "PCoAUN"
+ferinoc <- read.csv("./Data/PAST_FerAinoc_20241202.csv", header = T)
+ferinoc$Pheno <- "FerAinoc"
+ferun <- read.csv("./Data/PAST_FerAUN_20241202.csv", header = T)
+ferun$Pheno <- "FerAUN"
+pc <- read.csv("./Data/PAST_PCpct_20241202.csv", header = T)
+pc$Pheno <- "PCpct"
+
+mydfs <- list(sev, don, zea, pcoinoc, pcoun, ferinoc, ferun, pc)
+
+suppfile <- do.call(rbind, mydfs)
+
+suppfile %>% select(Pheno, pathway_id, pathway_name, gene_id, running_enrichment_score, pvalue, qvalue, mode) -> suppfile2
+colnames(suppfile2)
+colnames(suppfile2) <- c("Trait", "Pathway ID", "Pathway Name", "Gene ID", "Running Enrichment Score", "P-value", "Q-value", "Effect")
+write.csv(suppfile2, "./Output/SupplementaryTable7_PASTcomplete.csv", row.names = F)
+
+# MAKE IT SHORTER MORE LEGIBLE
+don %>% select(pathway_id, pathway_name, pvalue, qvalue, mode, Pheno) %>% distinct(pathway_id, .keep_all = T) -> don.filt
+sev %>% select(pathway_id, pathway_name, pvalue, qvalue, mode, Pheno) %>% distinct(pathway_id, .keep_all = T) -> sev.filt
+zea %>% select(pathway_id, pathway_name, pvalue, qvalue, mode, Pheno) %>% distinct(pathway_id, .keep_all = T) -> zea.filt
+pcoinoc %>% select(pathway_id, pathway_name, pvalue, qvalue, mode, Pheno) %>% distinct(pathway_id, .keep_all = T) -> pcoinoc.filt
+pcoun %>% select(pathway_id, pathway_name, pvalue, qvalue, mode, Pheno) %>% distinct(pathway_id, .keep_all = T) -> pcoun.filt
+ferinoc %>% select(pathway_id, pathway_name, pvalue, qvalue, mode, Pheno) %>% distinct(pathway_id, .keep_all = T) -> ferinoc.filt
+ferun %>% select(pathway_id, pathway_name, pvalue, qvalue, mode, Pheno) %>% distinct(pathway_id, .keep_all = T) -> ferun.filt
+pc %>% select(pathway_id, pathway_name, pvalue, qvalue, mode, Pheno) %>% distinct(pathway_id, .keep_all = T) -> pc.filt
+
+# OVERLAPPING PATHWAYS
+mydisdfs <- list(don.filt, sev.filt, zea.filt, pcoinoc.filt, ferinoc.filt)
+dispaths <- do.call(rbind, mydisdfs)
+
+dispaths %>% select(-c(pvalue, qvalue)) %>% 
+  group_by(pathway_id, pathway_name, mode) %>% 
+  summarise(Pheno = paste0(Pheno, collapse = ",")) %>%
+  pivot_wider(id_cols = c(pathway_id, pathway_name), names_from = mode, values_from = Pheno) -> dis.phenos.intersect
+
+write.csv(dis.phenos.intersect, "./Output/Table5_DisPathsIntersect.csv", row.names = F)
