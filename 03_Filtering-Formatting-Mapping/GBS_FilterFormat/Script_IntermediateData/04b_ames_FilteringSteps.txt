@@ -1,0 +1,16 @@
+#!/bin/bash
+
+#including only the taxa i have
+./run_pipeline.pl -Xmx8g \
+		  -fork1 -h5 ./ZeaGBSv27_publicSamples_imputedV5_AGPv4-181023.h5 \
+		  -includeTaxaInFile ./../../Downloads/Taxa_List.txt -export ames_taxa_filter
+
+#include only the sites with <20% missing
+./run_pipeline.pl -Xmx8g \
+		  -fork1 -h ames_taxa_filter1.hmp.txt \
+		  -includeSiteNamesInFile ./ames_gbs_siteNames2Include.txt -export ames_siteFilter2
+
+#filter for MAF >=0.05
+./run_pipeline.pl -Xmx8g \
+		  -fork1 -h ames_siteFilter2.hmp.txt \
+		  -filterAlign -filterAlignMinFreq 0.05 -export ames_filt-Taxa-Markers-MAF

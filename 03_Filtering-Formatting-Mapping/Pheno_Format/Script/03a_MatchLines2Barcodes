@@ -1,0 +1,78 @@
+# MATCHING LSMEANS TO MARKER SET BARCODES
+
+# PACKAGES
+library(tidyverse)
+
+# LOAD AND FORMAT DATASETS
+gbs <- read.csv("./../Data/AllZeaGBSv2.7_publicSamples_metadata20140411.csv", header = T)
+pheno <- read.csv("./../Data/All-SAS-LSMeans_20241118.csv", header = T)
+
+colnames(gbs)
+gbs.new <- gbs[,c(1:3,15)]
+
+gbs.new$barcode <- str_c(gbs.new$DNASample, ":", gbs.new$LibraryPrepID)
+head(gbs.new)
+
+## GBS.NEW
+for (i in c(1:5)) {
+  gbs.new[,i] <- as.factor(gbs.new[,i])
+}
+str(gbs.new)
+
+## PHENO
+colnames(pheno)[11] <- "PCoAinoc"
+for (i in c(2:16)) {
+  pheno[,i] <- as.numeric(pheno[,i])
+}
+pheno$plot <- as.factor(pheno$plot)
+str(pheno)
+
+# COMBINE 
+new.data <- merge(pheno, gbs.new, by.x = "plot", 
+                  by.y = "Pedigree", all.x = T) #og = 335 lines, new = 455 lines
+
+# ONLY KEEP MOST COMPLETE VERSION OF DUPLICATES
+n.occur <-data.frame(table(new.data$plot))
+n.occur[n.occur$Freq >1,]
+dups <- unique(n.occur[n.occur$Freq >1,])
+
+data.dups <- subset(new.data, plot %in% dups$Var1)
+
+colnames(data.dups)
+data.dups <- data.dups[,c(1,17:20)]
+
+gt.sum <- read.table("./../Data/ames_genotypeSummary_Taxa.txt", sep = "\t", header = T)
+gt.dups <- subset(gt.sum, Taxa.Name %in% data.dups$barcode)
+
+## PUT IT ALL TOGETHERR
+dups.summs <- merge(data.dups, gt.dups, by.x = "barcode", by.y = "Taxa.Name")
+
+# FUNCTION TO GENERATE LIST OF THINGS TO DROP
+decide.drop <- function(a.df) {
+  #grab the lowest value
+  keep <- a.df[which.min(a.df$Proportion.Missing),]
+  keep.list <- keep$barcode
+  #pull what's not the lowest value
+  to.drop <- a.df[!a.df$barcode %in% keep.list, ]
+  #add that barcode to a list of barcodes we want to drop
+  return(to.drop)
+}
+
+# LOOP THROUGH DUPS, MAKE LIST OF DROPS
+final.drops <- data.frame(matrix(ncol = 13, nrow = 0))
+colnames(final.drops) <- colnames(dups.summs)
+
+#looping through each individual line, and passing it through my function to 
+#get a list of individuals to drop from analysis
+for (u in unique(dups.summs$plot)) {
+  #grab dataframe of each duplicated genotype at a time
+  fxn.df <- subset(dups.summs, plot == u)
+  #pass through my function, one inbred line at a time
+  final.drops <- rbind(final.drops, decide.drop(fxn.df))
+}
+
+# FINAL FILTERED DATA FRAME
+final.data <- new.data[!new.data$barcode %in% final.drops$barcode, ]
+
+# SAVE
+write.csv(final.data, "./../Data/LSMeans_AllPhenos_BarcodesAdded_20241119.csv", row.names = F)
